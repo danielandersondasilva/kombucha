@@ -42,6 +42,40 @@ function el(tag, cls, text) {
   return n;
 }
 
+function pad(n) { return n < 10 ? "0" + n : String(n); }
+
+function tempoDecorrido(iso) {
+  var t = new Date(iso).getTime();
+  if (isNaN(t)) return null;
+  var s = Math.max(0, Math.floor((Date.now() - t) / 1000));
+  var dias = Math.floor(s / 86400);
+  var horasTotais = Math.floor(s / 3600);
+  var h = Math.floor((s % 86400) / 3600);
+  var m = Math.floor((s % 3600) / 60);
+  var seg = s % 60;
+  return {
+    statusGeral: pad(dias) + "d " + pad(h) + ":" + pad(m) + ":" + pad(seg),
+    producao: horasTotais + ":" + pad(m) + ":" + pad(seg)
+  };
+}
+
+function emojiStatus(status) {
+  var s = String(status).toLowerCase();
+  if (s === "em andamento") return "⏳";
+  if (s === "geladeira") return "❄️";
+  if (s === "descartado") return "🗑️";
+  return "ℹ️";
+}
+
+function row(rotulo, valor, cor) {
+  var r = el("div", "info-row");
+  r.appendChild(el("span", null, rotulo));
+  var v = el("strong", null, valor);
+  if (cor) v.style.color = cor;
+  r.appendChild(v);
+  return { row: r, valor: v };
+}
+
 function render(d) {
   var app = document.getElementById("app");
   app.innerHTML = "";
@@ -77,21 +111,42 @@ function render(d) {
 
     var det = el("div", "details-section");
     det.appendChild(el("h1", null, d.sabor));
+    var emAndamento = String(d.status).toLowerCase() === "em andamento";
+
+    // Card do lote
     var card = el("div", "info-card");
+    card.appendChild(row("Início da F2:", d.dataInicio).row);
+    card.appendChild(row("Status do lote:", d.status, d.cor.fg).row);
 
-    var r1 = el("div", "info-row");
-    r1.appendChild(el("span", null, "Início da F2:"));
-    r1.appendChild(el("strong", null, d.dataInicio));
-    card.appendChild(r1);
+    var geral = row("Status geral:", emojiStatus(d.status) + " " + d.status);
+    card.appendChild(geral.row);
 
-    var r2 = el("div", "info-row");
-    r2.appendChild(el("span", null, "Status:"));
-    var st = el("strong", null, d.status);
-    st.style.color = d.cor.fg;
-    r2.appendChild(st);
-    card.appendChild(r2);
+    var prod = null;
+    if (emAndamento && d.dataInicioISO) {
+      prod = row("Tempo de produção:", "");
+      card.appendChild(prod.row);
 
+      var atualizar = function () {
+        var t = tempoDecorrido(d.dataInicioISO);
+        if (!t) return;
+        geral.valor.textContent = emojiStatus(d.status) + " " + d.status + " • Fermentando a: " + t.statusGeral;
+        prod.valor.textContent = t.producao;
+      };
+      atualizar();
+      setInterval(atualizar, 1000);
+    }
     det.appendChild(card);
+
+    // Card da garrafa em uso
+    if (d.garrafaInfo && d.garrafaInfo.length) {
+      var cardG = el("div", "info-card");
+      cardG.style.borderLeftColor = "#64b5f6";
+      cardG.appendChild(row("Garrafa em uso:", d.garrafa).row);
+      d.garrafaInfo.forEach(function (i) {
+        cardG.appendChild(row(i.rotulo + ":", i.valor).row);
+      });
+      det.appendChild(cardG);
+    }
     main.appendChild(det);
   } else {
     var empty = el("div", "empty-container");
