@@ -258,8 +258,23 @@ function render(d) {
       det.appendChild(cardG);
     }
 
-    // ----- Card do histórico -----
+    // ----- Card das notas do sabor -----
     var h = d.historico || {};
+    var fmtNota = function (n) { return Number(n).toLocaleString("pt-BR", { maximumFractionDigits: 1 }); };
+    if (h.notaMedia != null || d.notaComunidade != null) {
+      var cardN = el("div", "info-card");
+      cardN.style.borderLeftColor = "#ffd54f";
+      cardN.appendChild(el("div", "card-titulo", "⭐ Notas deste sabor"));
+      if (h.notaMedia != null) {
+        cardN.appendChild(row("🙋 Minha nota (" + h.notasN + (h.notasN === 1 ? " avaliação" : " avaliações") + "):", fmtNota(h.notaMedia)).row);
+      }
+      if (d.notaComunidade != null) {
+        cardN.appendChild(row("👥 Comunidade (0–10):", fmtNota(d.notaComunidade)).row);
+      }
+      det.appendChild(cardN);
+    }
+
+    // ----- Card do histórico -----
     var temHist = h.lotesGarrafa > 0 || h.vezesSabor > 0;
     if (temHist) {
       var cardH = el("div", "info-card");
@@ -269,9 +284,6 @@ function render(d) {
       if (h.vezesSabor) cardH.appendChild(row("Vezes que este sabor foi feito:", String(h.vezesSabor)).row);
       if (h.mediaF2Seg != null) {
         cardH.appendChild(row("Média de F2 deste sabor (" + h.mediaF2N + (h.mediaF2N === 1 ? " lote" : " lotes") + "):", formatarDuracao(h.mediaF2Seg), null, "dur").row);
-      }
-      if (h.notaMedia != null) {
-        cardH.appendChild(row("⭐ Nota média deste sabor (" + h.notasN + (h.notasN === 1 ? " avaliação" : " avaliações") + "):", String(h.notaMedia)).row);
       }
       det.appendChild(cardH);
     }
