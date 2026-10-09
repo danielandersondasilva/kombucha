@@ -19,20 +19,26 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .details-section{padding:6vw 5vw;display:flex;flex-direction:column;gap:5vw;background:#121212;flex:1;}
 h1{color:#fff;font-size:clamp(2.2rem,10vw,3.6rem);font-weight:800;line-height:1.1;}
 .info-card{background:#1a1a1a;padding:5vw;border-radius:18px;border:1px solid #262626;border-left:8px solid #4CAF50;display:flex;flex-direction:column;gap:4vw;}
+.card-titulo{font-size:clamp(1rem,4.5vw,1.4rem);font-weight:700;color:#e0e0e0;letter-spacing:.02em;}
 .info-row{font-size:clamp(1.2rem,5.5vw,1.8rem);color:#b0b0b0;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;}
 .info-row strong{color:#fff;font-size:clamp(1.3rem,6vw,2rem);}
+.info-row strong.dur{font-size:clamp(1.1rem,5vw,1.6rem);text-align:right;margin-left:auto;}
 .empty-container{padding:12vw 5vw;text-align:center;display:flex;flex-direction:column;justify-content:center;align-items:center;flex:1;gap:5vw;}
 .empty-container h2{color:#ff5252;font-size:clamp(2rem,9vw,3.2rem);}
 .empty-container p{color:#aaa;font-size:clamp(1.2rem,5.5vw,1.8rem);line-height:1.5;max-width:600px;}
 .loading{margin:auto;color:#888;font-size:1.3rem;padding:20vw 5vw;text-align:center;}
+.banner{background:#0f2e2a;border:1px solid #1d4d46;color:#80cbc4;border-radius:14px;padding:4vw;font-size:clamp(1.05rem,4.6vw,1.4rem);line-height:1.4;}
 .tempo-bloco{display:flex;flex-direction:column;gap:3vw;}
 .tempo-titulo{font-size:clamp(1.2rem,5.5vw,1.8rem);color:#b0b0b0;}
 .tempo-chips{display:flex;flex-wrap:wrap;gap:2.5vw;}
 .chip{background:#232323;border:1px solid #2f2f2f;border-radius:14px;padding:2.5vw 3.5vw;min-width:22%;flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;}
 .chip strong{color:#fff;font-size:clamp(1.8rem,8vw,2.6rem);font-variant-numeric:tabular-nums;line-height:1;}
 .chip small{color:#999;font-size:clamp(.8rem,3.4vw,1.1rem);text-transform:uppercase;letter-spacing:.05em;}
-@media (min-width:768px){.chip{padding:14px 18px;min-width:90px;flex:0 0 auto;}.tempo-chips{gap:14px;}}
-@media (min-width:768px){.image-container{height:50vh;}.main-content{max-width:900px;margin:0 auto;}}
+.barra{display:flex;width:100%;height:16px;border-radius:10px;overflow:hidden;background:#2a2a2a;}
+.barra-fora{background:#ffb74d;}
+.barra-gel{background:#64b5f6;}
+.barra-legenda{font-size:clamp(.9rem,3.8vw,1.15rem);color:#999;}
+@media (min-width:768px){.image-container{height:50vh;}.main-content{max-width:900px;margin:0 auto;}.chip{padding:14px 18px;min-width:90px;flex:0 0 auto;}.tempo-chips{gap:14px;}}
 </style>
 </head>
 <body>
@@ -42,6 +48,8 @@ h1{color:#fff;font-size:clamp(2.2rem,10vw,3.6rem);font-weight:800;line-height:1.
 // >>> COLE AQUI a URL da implantação do Apps Script (termina em /exec)
 var API_URL = "https://script.google.com/macros/s/AKfycbzvuktf83V65rrW-hcAKhL1ph5t8_52d797FiHnPDg1kXf_9Vz3s2ZB1sajdMCpMwrt/exec";
 
+var tickers = []; // funções executadas a cada segundo
+
 function el(tag, cls, text) {
   var n = document.createElement(tag);
   if (cls) n.className = cls;
@@ -49,48 +57,81 @@ function el(tag, cls, text) {
   return n;
 }
 
-function pad(n) { return n < 10 ? "0" + n : String(n); }
-
-// Devolve as partes do tempo, começando na primeira unidade diferente de zero
-// (dias só aparecem quando há pelo menos 1 dia).
-function tempoDecorrido(iso) {
-  var t = new Date(iso).getTime();
-  if (isNaN(t)) return null;
-  var s = Math.max(0, Math.floor((Date.now() - t) / 1000));
-  var v = [Math.floor(s / 86400), Math.floor((s % 86400) / 3600), Math.floor((s % 3600) / 60), s % 60];
-  var nomes = [["dia", "dias"], ["hora", "horas"], ["minuto", "minutos"], ["segundo", "segundos"]];
-  var ini = 0;
-  while (ini < 3 && v[ini] === 0) ini++;
-  var partes = [];
-  for (var i = ini; i < 4; i++) {
-    partes.push({ n: v[i], rotulo: v[i] === 1 ? nomes[i][0] : nomes[i][1] });
-  }
-  return partes;
-}
-
 function emojiStatus(status) {
   var s = String(status).toLowerCase();
   if (s === "em andamento") return "⏳";
   if (s === "finalizado com sucesso") return "✅";
-  if (s === "livre") return "🟢";
   if (s === "geladeira") return "❄️";
   if (s === "descartado") return "🗑️";
+  if (s === "livre") return "🟢";
   return "ℹ️";
 }
 
-function row(rotulo, valor, cor) {
+function row(rotulo, valor, cor, cls) {
   var r = el("div", "info-row");
   r.appendChild(el("span", null, rotulo));
-  var v = el("strong", null, valor);
+  var v = el("strong", cls || null, valor);
   if (cor) v.style.color = cor;
   r.appendChild(v);
   return { row: r, valor: v };
 }
 
+// ---------- tempo ----------
+function ms(iso) {
+  if (!iso) return null;
+  var t = new Date(iso).getTime();
+  return isNaN(t) ? null : t;
+}
+
+// "1 dia 3 horas 5 minutos e 2 segundos" (omite unidades zeradas)
+function formatarDuracao(seg) {
+  if (seg == null) return "—";
+  seg = Math.max(0, Math.floor(seg));
+  var v = [Math.floor(seg / 86400), Math.floor((seg % 86400) / 3600), Math.floor((seg % 3600) / 60), seg % 60];
+  var nomes = [["dia", "dias"], ["hora", "horas"], ["minuto", "minutos"], ["segundo", "segundos"]];
+  var partes = [];
+  for (var i = 0; i < 4; i++) {
+    if (v[i] > 0) partes.push(v[i] + " " + (v[i] === 1 ? nomes[i][0] : nomes[i][1]));
+  }
+  if (!partes.length) return "0 segundos";
+  if (partes.length === 1) return partes[0];
+  return partes.slice(0, -1).join(" ") + " e " + partes[partes.length - 1];
+}
+
+// Partes para os blocos grandes (começa na primeira unidade diferente de zero)
+function partesBlocos(seg) {
+  seg = Math.max(0, Math.floor(seg || 0));
+  var v = [Math.floor(seg / 86400), Math.floor((seg % 86400) / 3600), Math.floor((seg % 3600) / 60), seg % 60];
+  var nomes = [["dia", "dias"], ["hora", "horas"], ["minuto", "minutos"], ["segundo", "segundos"]];
+  var ini = 0;
+  while (ini < 3 && v[ini] === 0) ini++;
+  var partes = [];
+  for (var i = ini; i < 4; i++) partes.push({ n: v[i], rotulo: v[i] === 1 ? nomes[i][0] : nomes[i][1] });
+  return partes;
+}
+
+// Fases do lote, em segundos. Fases em curso usam o relógio atual.
+function fases(d) {
+  var agora = Date.now();
+  var ini = ms(d.inicioISO), gel = ms(d.geladeiraISO), fim = ms(d.fimISO);
+  var st = String(d.status).toLowerCase();
+  var rodando = !fim && (st === "em andamento" || st === "geladeira");
+  var fimRef = fim != null ? fim : (rodando ? agora : null);
+  var s = function (a, b) { return (a != null && b != null) ? Math.max(0, (b - a) / 1000) : null; };
+  return {
+    rodando: rodando,
+    fora: ini != null ? s(ini, gel != null ? gel : fimRef) : null, // F2 fora da geladeira
+    geladeira: gel != null ? s(gel, fimRef) : null,                // tempo na geladeira
+    total: ini != null ? s(ini, fimRef) : null                     // total da F2
+  };
+}
+
+// ---------- render ----------
 function render(d) {
   var app = document.getElementById("app");
   app.innerHTML = "";
   app.style.cssText = "display:flex;flex-direction:column;flex:1;min-height:100vh;";
+  tickers = [];
 
   document.title = "Kombucha - " + (d.ativo ? d.sabor : d.garrafa);
 
@@ -122,37 +163,89 @@ function render(d) {
 
     var det = el("div", "details-section");
     det.appendChild(el("h1", null, d.sabor));
-    var emAndamento = String(d.status).toLowerCase() === "em andamento";
 
-    // Card do lote
+    if (d.finalizado) {
+      det.appendChild(el("div", "banner", "✅ Lote encerrado. Esta garrafa está disponível para um novo lote."));
+    }
+
+    var f = fases(d);
+    var st = String(d.status).toLowerCase();
+
+    // ----- Card do lote -----
     var card = el("div", "info-card");
-    card.appendChild(row("Início da F2:", d.dataInicio).row);
+    card.appendChild(row("🕒 Início da F2:", d.dataInicio).row);
     card.appendChild(row("Status do lote:", emojiStatus(d.status) + " " + d.status, d.cor.fg).row);
+    if (d.dataGeladeira) card.appendChild(row("❄️ Entrou na geladeira:", d.dataGeladeira).row);
+    if (d.dataFim) card.appendChild(row("🏁 Finalizado em:", d.dataFim).row);
+    if (d.nota) card.appendChild(row("⭐ Nota:", String(d.nota)).row);
 
-    if (emAndamento && d.dataInicioISO) {
+    // Blocos grandes com a fase em curso
+    if (f.rodando) {
+      var titulo = st === "geladeira" ? "❄️ Tempo na geladeira:" : "⏱️ Tempo fermentando:";
+      var pegar = function () { var x = fases(d); return st === "geladeira" ? x.geladeira : x.fora; };
+
       var bloco = el("div", "tempo-bloco");
-      bloco.appendChild(el("span", "tempo-titulo", "⏱️ Tempo fermentando:"));
+      bloco.appendChild(el("span", "tempo-titulo", titulo));
       var chips = el("div", "tempo-chips");
       bloco.appendChild(chips);
       card.appendChild(bloco);
 
-      var atualizar = function () {
-        var partes = tempoDecorrido(d.dataInicioISO);
-        if (!partes) return;
+      tickers.push(function () {
+        var seg = pegar();
+        if (seg == null) return;
         chips.innerHTML = "";
-        partes.forEach(function (p) {
+        partesBlocos(seg).forEach(function (p) {
           var c = el("div", "chip");
           c.appendChild(el("strong", null, String(p.n)));
           c.appendChild(el("small", null, p.rotulo));
           chips.appendChild(c);
         });
-      };
-      atualizar();
-      setInterval(atualizar, 1000);
+      });
     }
     det.appendChild(card);
 
-    // Card da garrafa em uso
+    // ----- Card dos tempos (aparece quando já houve geladeira ou término) -----
+    if (d.geladeiraISO || d.fimISO) {
+      var cardT = el("div", "info-card");
+      cardT.style.borderLeftColor = "#ffb74d";
+      cardT.appendChild(el("div", "card-titulo", "⏳ Tempos do lote"));
+
+      var linhas = [
+        { rotulo: "🌡️ F2 fora da geladeira:", chave: "fora" },
+        { rotulo: "❄️ Na geladeira:", chave: "geladeira" },
+        { rotulo: "🧮 Total da F2:", chave: "total" }
+      ];
+      linhas.forEach(function (ln) {
+        if (f[ln.chave] == null) return;
+        var r = row(ln.rotulo, formatarDuracao(f[ln.chave]), null, "dur");
+        cardT.appendChild(r.row);
+        tickers.push(function () { r.valor.textContent = formatarDuracao(fases(d)[ln.chave]); });
+      });
+
+      // Barra de proporção fora x geladeira
+      if (f.fora != null && f.geladeira != null) {
+        var barra = el("div", "barra");
+        var segA = el("div", "barra-fora");
+        var segB = el("div", "barra-gel");
+        barra.appendChild(segA);
+        barra.appendChild(segB);
+        var leg = el("div", "barra-legenda");
+        cardT.appendChild(barra);
+        cardT.appendChild(leg);
+        tickers.push(function () {
+          var x = fases(d);
+          var soma = (x.fora || 0) + (x.geladeira || 0);
+          if (!soma) return;
+          var pa = Math.round((x.fora || 0) / soma * 100);
+          segA.style.width = pa + "%";
+          segB.style.width = (100 - pa) + "%";
+          leg.textContent = "🌡️ " + pa + "% fora · ❄️ " + (100 - pa) + "% na geladeira";
+        });
+      }
+      det.appendChild(cardT);
+    }
+
+    // ----- Card da garrafa em uso -----
     if (d.garrafa) {
       var cardG = el("div", "info-card");
       cardG.style.borderLeftColor = "#64b5f6";
@@ -164,6 +257,25 @@ function render(d) {
       });
       det.appendChild(cardG);
     }
+
+    // ----- Card do histórico -----
+    var h = d.historico || {};
+    var temHist = h.lotesGarrafa > 0 || h.vezesSabor > 0;
+    if (temHist) {
+      var cardH = el("div", "info-card");
+      cardH.style.borderLeftColor = "#ba68c8";
+      cardH.appendChild(el("div", "card-titulo", "📊 Histórico"));
+      if (h.lotesGarrafa) cardH.appendChild(row("Lotes nesta garrafa:", String(h.lotesGarrafa)).row);
+      if (h.vezesSabor) cardH.appendChild(row("Vezes que este sabor foi feito:", String(h.vezesSabor)).row);
+      if (h.mediaF2Seg != null) {
+        cardH.appendChild(row("Média de F2 deste sabor (" + h.mediaF2N + (h.mediaF2N === 1 ? " lote" : " lotes") + "):", formatarDuracao(h.mediaF2Seg), null, "dur").row);
+      }
+      if (h.notaMedia != null) {
+        cardH.appendChild(row("⭐ Nota média deste sabor (" + h.notasN + (h.notasN === 1 ? " avaliação" : " avaliações") + "):", String(h.notaMedia)).row);
+      }
+      det.appendChild(cardH);
+    }
+
     main.appendChild(det);
   } else {
     var empty = el("div", "empty-container");
@@ -175,6 +287,10 @@ function render(d) {
     main.appendChild(empty);
   }
   app.appendChild(main);
+
+  var rodar = function () { tickers.forEach(function (fn) { fn(); }); };
+  rodar();
+  if (tickers.length) setInterval(rodar, 1000);
 }
 
 function erro(msg) {
