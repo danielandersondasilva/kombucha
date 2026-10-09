@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kombucha</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+html{font-size:18px;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#0b0b0b;color:#f1f1f1;display:flex;flex-direction:column;min-height:100vh;}
+.top-bar{background:#161616;padding:5vw;display:flex;justify-content:space-between;align-items:center;gap:12px;border-bottom:2px solid #222;flex-wrap:wrap;}
+.bottle-name{font-size:clamp(1.6rem,7vw,2.6rem);font-weight:700;color:#a5d6a7;}
+.status-pill{font-size:clamp(1rem,4vw,1.5rem);font-weight:bold;padding:2vw 4vw;border-radius:30px;text-transform:uppercase;}
+.main-content{flex:1;display:flex;flex-direction:column;width:100%;}
+.image-container{width:100%;height:45vh;background:#181818;display:flex;align-items:center;justify-content:center;border-bottom:2px solid #222;overflow:hidden;}
+.image-container img{width:100%;height:100%;object-fit:cover;}
+.no-image-text{color:#888;font-size:clamp(1.1rem,5vw,1.6rem);text-align:center;}
+.no-image-text small{font-size:12px;color:#666;display:block;padding:8px;}
+.details-section{padding:6vw 5vw;display:flex;flex-direction:column;gap:5vw;background:#121212;flex:1;}
+h1{color:#fff;font-size:clamp(2.2rem,10vw,3.6rem);font-weight:800;line-height:1.1;}
+.info-card{background:#1a1a1a;padding:5vw;border-radius:18px;border:1px solid #262626;border-left:8px solid #4CAF50;display:flex;flex-direction:column;gap:4vw;}
+.info-row{font-size:clamp(1.2rem,5.5vw,1.8rem);color:#b0b0b0;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;}
+.info-row strong{color:#fff;font-size:clamp(1.3rem,6vw,2rem);}
+.empty-container{padding:12vw 5vw;text-align:center;display:flex;flex-direction:column;justify-content:center;align-items:center;flex:1;gap:5vw;}
+.empty-container h2{color:#ff5252;font-size:clamp(2rem,9vw,3.2rem);}
+.empty-container p{color:#aaa;font-size:clamp(1.2rem,5.5vw,1.8rem);line-height:1.5;max-width:600px;}
+.loading{margin:auto;color:#888;font-size:1.3rem;padding:20vw 5vw;text-align:center;}
+@media (min-width:768px){.image-container{height:50vh;}.main-content{max-width:900px;margin:0 auto;}}
+</style>
+</head>
+<body>
+<div id="app"><div class="loading">Carregando…</div></div>
+
+<script>
+// >>> COLE AQUI a URL da implantação do Apps Script (termina em /exec)
+var API_URL = "COLE_A_URL_DO_APPS_SCRIPT_AQUI/exec";
+
+function el(tag, cls, text) {
+  var n = document.createElement(tag);
+  if (cls) n.className = cls;
+  if (text != null) n.textContent = text;
+  return n;
+}
+
+function render(d) {
+  var app = document.getElementById("app");
+  app.innerHTML = "";
+  app.style.cssText = "display:flex;flex-direction:column;flex:1;min-height:100vh;";
+
+  document.title = "Kombucha - " + (d.ativo ? d.sabor : d.garrafa);
+
+  var top = el("div", "top-bar");
+  top.appendChild(el("div", "bottle-name", "🍾 " + d.garrafa));
+  var pill = el("div", "status-pill", d.status);
+  pill.style.background = d.cor.bg;
+  pill.style.color = d.cor.fg;
+  top.appendChild(pill);
+  app.appendChild(top);
+
+  var main = el("div", "main-content");
+
+  if (d.ativo) {
+    var imgBox = el("div", "image-container");
+    if (d.imagem) {
+      var img = document.createElement("img");
+      img.src = d.imagem;
+      img.alt = d.sabor;
+      img.referrerPolicy = "no-referrer";
+      imgBox.appendChild(img);
+    } else {
+      var t = el("div", "no-image-text", "Sem imagem cadastrada");
+      t.appendChild(document.createElement("br"));
+      t.appendChild(el("small", null, d.diag));
+      imgBox.appendChild(t);
+    }
+    main.appendChild(imgBox);
+
+    var det = el("div", "details-section");
+    det.appendChild(el("h1", null, d.sabor));
+    var card = el("div", "info-card");
+
+    var r1 = el("div", "info-row");
+    r1.appendChild(el("span", null, "Início da F2:"));
+    r1.appendChild(el("strong", null, d.dataInicio));
+    card.appendChild(r1);
+
+    var r2 = el("div", "info-row");
+    r2.appendChild(el("span", null, "Status:"));
+    var st = el("strong", null, d.status);
+    st.style.color = d.cor.fg;
+    r2.appendChild(st);
+    card.appendChild(r2);
+
+    det.appendChild(card);
+    main.appendChild(det);
+  } else {
+    var empty = el("div", "empty-container");
+    empty.appendChild(el("h2", null, "Garrafa Disponível"));
+    var p = el("p");
+    p.appendChild(el("strong", null, d.garrafa));
+    p.appendChild(document.createTextNode(" está limpa e no momento não possui nenhum lote em uso."));
+    empty.appendChild(p);
+    main.appendChild(empty);
+  }
+  app.appendChild(main);
+}
+
+function erro(msg) {
+  var app = document.getElementById("app");
+  app.innerHTML = "";
+  var box = el("div", "empty-container");
+  box.appendChild(el("h2", null, "Ops"));
+  box.appendChild(el("p", null, msg));
+  app.appendChild(box);
+}
+
+(function () {
+  var garrafa = new URLSearchParams(location.search).get("garrafa");
+  if (!garrafa) { erro("Faltou o parâmetro ?garrafa= na URL."); return; }
+
+  fetch(API_URL + "?garrafa=" + encodeURIComponent(garrafa))
+    .then(function (r) { return r.json(); })
+    .then(function (d) {
+      if (!d.ok) { erro("Erro no servidor: " + d.erro); return; }
+      render(d);
+    })
+    .catch(function () { erro("Não foi possível carregar os dados. Tente novamente."); });
+})();
+</script>
+</body>
+</html>
