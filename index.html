@@ -25,6 +25,13 @@ h1{color:#fff;font-size:clamp(2.2rem,10vw,3.6rem);font-weight:800;line-height:1.
 .empty-container h2{color:#ff5252;font-size:clamp(2rem,9vw,3.2rem);}
 .empty-container p{color:#aaa;font-size:clamp(1.2rem,5.5vw,1.8rem);line-height:1.5;max-width:600px;}
 .loading{margin:auto;color:#888;font-size:1.3rem;padding:20vw 5vw;text-align:center;}
+.tempo-bloco{display:flex;flex-direction:column;gap:3vw;}
+.tempo-titulo{font-size:clamp(1.2rem,5.5vw,1.8rem);color:#b0b0b0;}
+.tempo-chips{display:flex;flex-wrap:wrap;gap:2.5vw;}
+.chip{background:#232323;border:1px solid #2f2f2f;border-radius:14px;padding:2.5vw 3.5vw;min-width:22%;flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;}
+.chip strong{color:#fff;font-size:clamp(1.8rem,8vw,2.6rem);font-variant-numeric:tabular-nums;line-height:1;}
+.chip small{color:#999;font-size:clamp(.8rem,3.4vw,1.1rem);text-transform:uppercase;letter-spacing:.05em;}
+@media (min-width:768px){.chip{padding:14px 18px;min-width:90px;flex:0 0 auto;}.tempo-chips{gap:14px;}}
 @media (min-width:768px){.image-container{height:50vh;}.main-content{max-width:900px;margin:0 auto;}}
 </style>
 </head>
@@ -44,24 +51,28 @@ function el(tag, cls, text) {
 
 function pad(n) { return n < 10 ? "0" + n : String(n); }
 
+// Devolve as partes do tempo, começando na primeira unidade diferente de zero
+// (dias só aparecem quando há pelo menos 1 dia).
 function tempoDecorrido(iso) {
   var t = new Date(iso).getTime();
   if (isNaN(t)) return null;
   var s = Math.max(0, Math.floor((Date.now() - t) / 1000));
-  var dias = Math.floor(s / 86400);
-  var horasTotais = Math.floor(s / 3600);
-  var h = Math.floor((s % 86400) / 3600);
-  var m = Math.floor((s % 3600) / 60);
-  var seg = s % 60;
-  return {
-    statusGeral: pad(dias) + "d " + pad(h) + ":" + pad(m) + ":" + pad(seg),
-    producao: horasTotais + ":" + pad(m) + ":" + pad(seg)
-  };
+  var v = [Math.floor(s / 86400), Math.floor((s % 86400) / 3600), Math.floor((s % 3600) / 60), s % 60];
+  var nomes = [["dia", "dias"], ["hora", "horas"], ["minuto", "minutos"], ["segundo", "segundos"]];
+  var ini = 0;
+  while (ini < 3 && v[ini] === 0) ini++;
+  var partes = [];
+  for (var i = ini; i < 4; i++) {
+    partes.push({ n: v[i], rotulo: v[i] === 1 ? nomes[i][0] : nomes[i][1] });
+  }
+  return partes;
 }
 
 function emojiStatus(status) {
   var s = String(status).toLowerCase();
   if (s === "em andamento") return "⏳";
+  if (s === "finalizado com sucesso") return "✅";
+  if (s === "livre") return "🟢";
   if (s === "geladeira") return "❄️";
   if (s === "descartado") return "🗑️";
   return "ℹ️";
@@ -85,7 +96,7 @@ function render(d) {
 
   var top = el("div", "top-bar");
   top.appendChild(el("div", "bottle-name", "🍾 " + d.garrafa));
-  var pill = el("div", "status-pill", d.status);
+  var pill = el("div", "status-pill", emojiStatus(d.status) + " " + d.status);
   pill.style.background = d.cor.bg;
   pill.style.color = d.cor.fg;
   top.appendChild(pill);
@@ -116,21 +127,25 @@ function render(d) {
     // Card do lote
     var card = el("div", "info-card");
     card.appendChild(row("Início da F2:", d.dataInicio).row);
-    card.appendChild(row("Status do lote:", d.status, d.cor.fg).row);
+    card.appendChild(row("Status do lote:", emojiStatus(d.status) + " " + d.status, d.cor.fg).row);
 
-    var geral = row("Status geral:", emojiStatus(d.status) + " " + d.status);
-    card.appendChild(geral.row);
-
-    var prod = null;
     if (emAndamento && d.dataInicioISO) {
-      prod = row("Tempo de produção:", "");
-      card.appendChild(prod.row);
+      var bloco = el("div", "tempo-bloco");
+      bloco.appendChild(el("span", "tempo-titulo", "⏱️ Tempo fermentando:"));
+      var chips = el("div", "tempo-chips");
+      bloco.appendChild(chips);
+      card.appendChild(bloco);
 
       var atualizar = function () {
-        var t = tempoDecorrido(d.dataInicioISO);
-        if (!t) return;
-        geral.valor.textContent = emojiStatus(d.status) + " " + d.status + " • Fermentando a: " + t.statusGeral;
-        prod.valor.textContent = t.producao;
+        var partes = tempoDecorrido(d.dataInicioISO);
+        if (!partes) return;
+        chips.innerHTML = "";
+        partes.forEach(function (p) {
+          var c = el("div", "chip");
+          c.appendChild(el("strong", null, String(p.n)));
+          c.appendChild(el("small", null, p.rotulo));
+          chips.appendChild(c);
+        });
       };
       atualizar();
       setInterval(atualizar, 1000);
@@ -138,11 +153,13 @@ function render(d) {
     det.appendChild(card);
 
     // Card da garrafa em uso
-    if (d.garrafaInfo && d.garrafaInfo.length) {
+    if (d.garrafa) {
       var cardG = el("div", "info-card");
       cardG.style.borderLeftColor = "#64b5f6";
-      cardG.appendChild(row("Garrafa em uso:", d.garrafa).row);
-      d.garrafaInfo.forEach(function (i) {
+      cardG.appendChild(row("🍾 Garrafa em uso:", d.garrafa).row);
+      (d.garrafaInfo || []).forEach(function (i) {
+        // evita repetir o nome da garrafa (linha "Garrafa" ou valor igual)
+        if (/^garrafa$/i.test(i.rotulo.trim()) || i.valor === d.garrafa) return;
         cardG.appendChild(row(i.rotulo + ":", i.valor).row);
       });
       det.appendChild(cardG);
